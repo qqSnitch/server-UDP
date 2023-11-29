@@ -1,63 +1,61 @@
-###############################################################################
-# Set default behavior to automatically normalize line endings.
-###############################################################################
-* text=auto
+// UDP-эхо сервер
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include <winsock2.h>
+#include <windows.h>
+#include <string>
+#include <iostream>
+#pragma comment(lib, "Ws2_32.lib")
+#pragma warning(disable: 4996)
+using namespace std;
+#define PORT 666    // порт сервера
+#define sHELLO "Hello, STUDENT\n"
 
-###############################################################################
-# Set default behavior for command prompt diff.
-#
-# This is need for earlier builds of msysgit that does not have it on by
-# default for csharp files.
-# Note: This is only used by command line
-###############################################################################
-#*.cs     diff=csharp
-
-###############################################################################
-# Set the merge driver for project and solution files
-#
-# Merging from the command prompt will add diff markers to the files if there
-# are conflicts (Merging from VS is not affected by the settings below, in VS
-# the diff markers are never inserted). Diff markers may cause the following 
-# file extensions to fail to load in VS. An alternative would be to treat
-# these files as binary and thus will always conflict and require user
-# intervention with every merge. To do so, just uncomment the entries below
-###############################################################################
-#*.sln       merge=binary
-#*.csproj    merge=binary
-#*.vbproj    merge=binary
-#*.vcxproj   merge=binary
-#*.vcproj    merge=binary
-#*.dbproj    merge=binary
-#*.fsproj    merge=binary
-#*.lsproj    merge=binary
-#*.wixproj   merge=binary
-#*.modelproj merge=binary
-#*.sqlproj   merge=binary
-#*.wwaproj   merge=binary
-
-###############################################################################
-# behavior for image files
-#
-# image files are treated as binary by default.
-###############################################################################
-#*.jpg   binary
-#*.png   binary
-#*.gif   binary
-
-###############################################################################
-# diff behavior for common document formats
-# 
-# Convert binary document formats to text before diffing them. This feature
-# is only available from the command line. Turn it on by uncommenting the 
-# entries below.
-###############################################################################
-#*.doc   diff=astextplain
-#*.DOC   diff=astextplain
-#*.docx  diff=astextplain
-#*.DOCX  diff=astextplain
-#*.dot   diff=astextplain
-#*.DOT   diff=astextplain
-#*.pdf   diff=astextplain
-#*.PDF   diff=astextplain
-#*.rtf   diff=astextplain
-#*.RTF   diff=astextplain
+int main() {
+    char buff[1024];
+    cout << "UDP DEMO ECHO-SERVER\n";
+    // шаг 1 - подключение библиотеки 
+    if (WSAStartup(0x202, (WSADATA*)&buff[0]))
+    {
+        cout << "WSAStartup error: " << WSAGetLastError();//ошибка
+        return -1;
+    }
+    // шаг 2 - создание сокета
+    SOCKET Lsock;// создаем сокет
+    Lsock = socket(AF_INET, SOCK_DGRAM, 0);//это протокол на основе дейтаграмм. Вы отправляете одну дейтаграмму и получаете один ответ, после чего соединение прерывается.
+    if (Lsock == INVALID_SOCKET) {
+        cout << "SOCKET() ERROR: " << WSAGetLastError();//ошибка в сокете
+        WSACleanup();
+        return -1;
+    }
+    // шаг 3 - связывание сокета с локальным адресом 
+    sockaddr_in Laddr;// создание и заполнение структуры адреса клиента
+    Laddr.sin_family = AF_INET;
+    Laddr.sin_addr.s_addr = INADDR_ANY;   // или 0 (любой IP адрес)
+    Laddr.sin_port = htons(PORT);
+    if (bind(Lsock, (sockaddr*)&Laddr, sizeof(Laddr)))
+    {
+        cout << "BIND ERROR:" << WSAGetLastError();
+        closesocket(Lsock);
+        WSACleanup();
+        return -1;
+    }
+    // шаг 4 обработка пакетов, присланных клиентами
+    while (1) {
+        sockaddr_in Caddr;
+        int Caddr_size = sizeof(Caddr);
+        int bsize = recvfrom(Lsock, &buff[0], sizeof(buff) - 1, 0,
+            (sockaddr*)&Caddr, &Caddr_size);
+        if (bsize == SOCKET_ERROR)
+            cout << "RECVFROM() ERROR:" << WSAGetLastError();
+        // Определяем IP-адрес клиента и прочие атрибуты
+        HOSTENT* hst;
+        hst = gethostbyaddr((char*)&Caddr.sin_addr, 4, AF_INET);
+        cout << "NEW DATAGRAM!\n" <<
+            ((hst) ? hst->h_name : "Unknown host") << "/n" <<
+            inet_ntoa(Caddr.sin_addr) << "/n" << ntohs(Caddr.sin_port) << '\n';
+        buff[bsize] = '\0';              // добавление завершающего нуля
+        cout << "C=>S:" << buff << '\n';        // Вывод на экран 
+        // посылка датаграммы клиенту
+        sendto(Lsock, &buff[0], bsize, 0, (sockaddr*)&Caddr, sizeof(Caddr));
+    }      return 0;
+}
