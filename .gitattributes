@@ -55,7 +55,7 @@ int main() {
             inet_ntoa(Caddr.sin_addr) << "/n" << ntohs(Caddr.sin_port) << '\n';
         buff[bsize] = '\0';              // добавление завершающего нуля
         cout << "C=>S:" << buff << '\n';        // Вывод на экран 
-        // посылка датаграммы клиенту
+    // посылка датаграммы клиенту
         sendto(Lsock, &buff[0], bsize, 0, (sockaddr*)&Caddr, sizeof(Caddr));
     }      return 0;
 }
